@@ -160,7 +160,7 @@ WantedBy=multi-user.target
 
  
 
-            Step 6: Install Sonar-Scanner 
+    Step 6: Install Sonar-Scanner 
 
                   1. Update System and Install Prerequisites:  
 
@@ -210,4 +210,11 @@ WantedBy=multi-user.target
 
                                source /etc/profile.d/sonar-scanner.sh 
 
- 
+ Step 6: create project in sonarqube scan code
+        sonar-scanner \
+        -Dsonar.projectKey=myproject \
+        -Dsonar.sources=. \
+        -Dsonar.host.url=http://localhost:9000 \
+        -Dsonar.login=b917488b0e13bb34f0ea66d5dd751cd8888d1e4b //token of sonarqube
+
+        

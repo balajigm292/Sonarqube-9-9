@@ -1,0 +1,213 @@
+Installation  SonarQube 9.9 
+
+Step 1: Install PostgreSQL 
+
+Update and Upgrade the System: 
+
+ sudo apt update 
+ sudo apt upgrade 
+
+        2. Add PostgreSQL Repository: 
+
+ sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' 
+ 
+
+        3.    Import PostgreSQL Signing Key: 
+                wget -qO- https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo tee /etc/apt/trusted.gpg.d/pgdg.asc &>/dev/null 
+          
+
+         4.   Install PostgreSQL: 
+                     sudo apt update 
+                    sudo apt-get -y install postgresql postgresql-contrib 
+                    sudo systemctl enable postgresql 
+
+Step 2: Create Database for SonarQube 
+
+         1. Set PostgreSQL Password: 
+
+                      sudo passwd postgres 
+
+           2. Switch to PostgreSQL User: 
+                       su – postgres 
+
+            3.  Create User and Database: 
+ 
+                   createuser sonar 
+                   psql  
+                   ALTER USER sonar WITH ENCRYPTED password 'sonar'; 
+                  CREATE DATABASE sonarqube OWNER sonar; 
+                   grant all privileges on DATABASE sonarqube to sonar; 
+                    \q 
+ 
+                   exit 
+
+  Step 3: Install Java 17 
+
+         1. Open a Root Shell:  
+
+                  sudo bash 
+
+    2. Install Prerequisites: 
+                  
+
+                 apt install -y wget apt-transport-https 
+                 mkdir -p /etc/apt/keyrings 
+                  wget -O - https://packages.adoptium.net/artifactory/api/gpg/key/public | tee /etc/apt/keyrings/adoptium.asc 
+ 
+
+      3 .Add Adoptium Repository: 
+
+                      echo "deb [signed-by=/etc/apt/keyrings/adoptium.asc] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print$2}' /etc/os-release) main" | tee /etc/apt/sources.list.d/adoptium.list 
+        
+
+      4. Install Java 17: 
+                  apt update 
+                  apt install temurin-17-jdk 
+                  update-alternatives --config java 
+                  /usr/bin/java --version 
+ 
+                  exit 
+
+Step 4: Increase System Limits 
+
+           1. Edit Security Limits: 
+
+                      sudo vim /etc/security/limits.con 
+
+          # Paste the below values at the bottom of the file 
+
+                     sonarqube   -   nofile   65536 
+                     sonarqube   -   nproc    4096 
+                     
+
+              2.Edit Sysctl Configuration:   
+
+                      sudo vim /etc/sysctl.conf 
+ 
+
+            #Paste the below values at the bottom of the file 
+
+                     vm.max_map_count = 262144 
+                 
+
+              3.Reboot the System: 
+
+                     sudo reboot 
+
+Step 5: Install SonarQube 9.9 
+
+              1. Download and Unzip SonarQube: 
+
+                        sudo wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.9.0.65466.zip 
+                      sudo apt install unzip 
+                      sudo unzip sonarqube-9.9.0.65466.zip -d /opt 
+                       sudo mv /opt/sonarqube-9.9.0.65466 /opt/sonarqube 
+                   
+
+       2.Create SonarQube Group and User:       
+
+                      sudo groupadd sonar 
+                     sudo useradd -c "user to run SonarQube" -d /opt/sonarqube -g sonar sonar 
+                     sudo chown sonar:sonar /opt/sonarqube -R 
+ 
+
+           3.Update Sonarqube properties with DB credentials 
+
+                        sudo vim /opt/sonarqube/conf/sonar.properties 
+                #Find and replace the below values, you might need to add the sonar.jdbc.url 
+
+                       sonar.jdbc.username=sonar 
+                       sonar.jdbc.password=sonar 
+                       sonar.jdbc.url=jdbc:postgresql://localhost:5432/sonarqube 
+ 
+
+            4.Create service for Sonarqube 
+
+                     sudo vim /etc/systemd/system/sonar.service 
+            #Paste the below into the file 
+
+[Unit] 
+Description=SonarQube service 
+After=syslog.target network.target 
+ 
+[Service] 
+Type=forking 
+ 
+ExecStart=/opt/sonarqube/bin/linux-x86-64/sonar.sh start 
+ExecStop=/opt/sonarqube/bin/linux-x86-64/sonar.sh stop 
+ 
+User=sonar 
+Group=sonar 
+Restart=always 
+ 
+LimitNOFILE=65536 
+LimitNPROC=4096 
+ 
+[Install] 
+WantedBy=multi-user.target 
+ 
+
+             5.Start Sonarqube and Enable service 
+
+                      sudo systemctl start sonar 
+                    sudo systemctl enable sonar 
+                    sudo systemctl status sonar 
+
+                 6. Sonarqube logs 
+                    
+
+                        sudo tail -f /opt/sonarqube/logs/sonar.log 
+
+ 
+
+            Step 6: Install Sonar-Scanner 
+
+                  1. Update System and Install Prerequisites:  
+
+                           sudo apt-get update 
+
+                         sudo apt-get install unzip wget nodejs 
+
+                   2. Download and Install Sonar-Scanner: 
+
+                          mkdir /downloads/sonarqube -p 
+
+                        cd /downloads/sonarqube 
+
+                            wget https://binaries.sonarsource.com/Distribution/sonar-scanner-cli/sonar-scanner-cli-4.2.0.1873-linux.zip 
+
+                         unzip sonar-scanner-cli-4.2.0.1873-linux.zip 
+
+                         mv sonar-scanner-5.0.0.2966-linux /opt/sonar-scanner 
+
+                  3. Configure Sonar-Scanner: 
+
+                            vi /opt/sonar-scanner/conf/sonar-scanner.properties 
+
+                       #Add the Following Lines: 
+
+                            sonar.host.url=http://localhost:9000 
+
+                            sonar.sourceEncoding=UTF-8 
+
+                   4. Set Environment Variables: 
+
+                               vi /etc/profile.d/sonar-scanner.sh 
+
+                      #Check and add the Following Lines:  
+
+                             #/bin/bash 
+
+                             export PATH="$PATH:/opt/sonar-scanner/bin" 
+
+                             export PATH=$SONAR_SCANNER_HOME/bin:$PATH 
+
+                 5 .Reboot the System: 
+
+                               sudo  reboo 
+
+               6 . Source the Profile Script: 
+
+                               source /etc/profile.d/sonar-scanner.sh 
+
+ 

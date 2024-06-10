@@ -1,0 +1,70 @@
+sonar finall upgrade
+
+1. Backup Your Data
+a. Backup SonarQube Database
+
+sudo pg_dump -U sonar -h localhost -d sonarqube -F c -b -v -f /opt/sonarqube/sonar_database_backup.sql
+
+Backup Configuration Files:
+
+sudo cp /opt/sonarqube/conf/sonar.properties /opt/sonarqube/sonar.properties
+sudo cp /opt/sonarqube/conf/wrapper.conf /opt/sonarqube/wrapper.conf
+
+2. Stop SonarQube
+
+a. Grant Execute Permission:
+sudo chmod +x /opt/sonarqube/bin/linux-x86-64/sonar.sh
+
+Stop SonarQube:
+sudo systemctl stop sonar
+
+3. Download and Extract SonarQube 9.9
+a. Download SonarQube 9.9:
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-9.9.0.65466.zip
+
+b. Extract the Downloaded Archive:
+
+sudo apt install unzip
+sudo unzip sonarqube-9.9.0.65466.zip -d /opt
+sudo mv /opt/sonarqube-9.9.0.65466 /opt/sonarqube2
+
+4. Copy Configuration Files
+
+cp /opt/sonarqube/sonar.properties /opt/sonarqube2/sonarqube-9.9/conf/sonar.properties 
+
+cp /opt/sonarqube/wrapper.conf /opt/sonarqube2/sonarqube-9.9/conf/wrapper.conf
+
+7. Start SonarQube
+ sudo systemctl start sonar
+sudo systemctl enable sonar
+sudo systemctl status sonar
+sudo tail -f /opt/sonarqube/logs/sonar.log
+
+
+
+Update the Systemd Service File:
+Modify the sonar.service file to point to the new SonarQube installation.
+
+sh
+Copy code
+sudo nano /etc/systemd/system/sonar.service
+Copy code
+[Unit]
+Description=SonarQube service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+
+ExecStart=/path/to/sonarqube-9.9/bin/linux-x86-64/sonar.sh start
+ExecStop=/path/to/sonarqube-9.9/bin/linux-x86-64/sonar.sh stop
+
+User=sonar
+Group=sonar
+Restart=always
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target
